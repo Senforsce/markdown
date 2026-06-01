@@ -3,13 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 
-	"github.com/gomarkdown/markdown"
-	"github.com/gomarkdown/markdown/ast"
-	mdhtml "github.com/gomarkdown/markdown/html"
-	"github.com/gomarkdown/markdown/parser"
+	"github.com/senforsce/markdown"
+	"github.com/senforsce/markdown/ast"
+	mdhtml "github.com/senforsce/markdown/html"
+	"github.com/senforsce/markdown/parser"
 )
 
 // This prints AST of parsed markdown document.
@@ -34,7 +33,7 @@ func main() {
 		usageAndExit()
 	}
 	for _, fileName := range files {
-		d, err := ioutil.ReadFile(fileName)
+		d, err := os.ReadFile(fileName)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Couldn't open '%s', error: '%s'\n", fileName, err)
 			continue

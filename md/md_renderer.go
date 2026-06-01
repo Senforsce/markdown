@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gomarkdown/markdown/ast"
+	"github.com/senforsce/markdown/ast"
 )
 
 // Renderer renders to markdown. Allows to convert to a canonnical

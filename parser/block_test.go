@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/gomarkdown/markdown/ast"
+	"github.com/senforsce/markdown/ast"
 )
 
 func astToString(node ast.Node) string {

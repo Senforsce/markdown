@@ -2,11 +2,13 @@ package markdown
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"strings"
 
-	"github.com/gomarkdown/markdown/ast"
-	"github.com/gomarkdown/markdown/html"
-	"github.com/gomarkdown/markdown/parser"
+	"github.com/senforsce/markdown/ast"
+	"github.com/senforsce/markdown/html"
+	"github.com/senforsce/markdown/parser"
 )
 
 // Renderer is an interface for implementing custom renderers.
@@ -53,6 +55,14 @@ func Parse(markdown []byte, p *parser.Parser) ast.Node {
 	return p.Parse(markdown)
 }
 
+func dump(node ast.Node, depth int) {
+	fmt.Printf("%s%T\n", strings.Repeat("  ", depth), node)
+
+	for _, c := range node.GetChildren() {
+		dump(c, depth+1)
+	}
+}
+
 // Render uses renderer to convert parsed markdown document into a different format.
 //
 // To convert to HTML, pass html.Renderer
@@ -63,6 +73,7 @@ func Render(doc ast.Node, renderer Renderer) []byte {
 		return renderer.RenderNode(&buf, node, entering)
 	})
 	renderer.RenderFooter(&buf, doc)
+	dump(doc, 0)
 	return buf.Bytes()
 }
 

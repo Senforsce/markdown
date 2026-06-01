@@ -5,10 +5,10 @@ package main
 import (
 	"os"
 
-	"github.com/gomarkdown/markdown"
-	"github.com/gomarkdown/markdown/ast"
-	"github.com/gomarkdown/markdown/html"
-	"github.com/gomarkdown/markdown/parser"
+	"github.com/senforsce/markdown"
+	"github.com/senforsce/markdown/ast"
+	"github.com/senforsce/markdown/html"
+	"github.com/senforsce/markdown/parser"
 
 	"fmt"
 )

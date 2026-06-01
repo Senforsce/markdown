@@ -11,7 +11,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/gomarkdown/markdown/ast"
+	"github.com/senforsce/markdown/ast"
 )
 
 // Extensions is a bitmask of enabled parser extensions.
@@ -24,6 +24,7 @@ const (
 	NoIntraEmphasis        Extensions = 1 << iota // Ignore emphasis markers inside words
 	Tables                                        // Parse tables
 	FencedCode                                    // Parse fenced code blocks
+	Box                                           // parse box blocks
 	Autolink                                      // Detect embedded URLs that are not explicitly marked
 	Strikethrough                                 // Strikethrough text using ~~test~~
 	LaxHTMLBlocks                                 // Loosen up HTML block parsing rules
@@ -111,7 +112,9 @@ type Parser struct {
 	// in notes. Slice is nil if footnotes not enabled.
 	notes []*reference
 
-	tip                  ast.Node // = doc
+	tip  ast.Node // = doc
+	stop ast.Node // 👈 new
+
 	oldTip               ast.Node
 	lastMatchedContainer ast.Node // = doc
 	allClosed            bool
@@ -217,11 +220,24 @@ func (p *Parser) isFootnote(ref *reference) bool {
 }
 
 func (p *Parser) Finalize(block ast.Node) {
+	if p.stop != nil {
+		if block == p.stop {
+			return
+		}
+
+		// IMPORTANT: prevent escaping container boundary
+		if p.tip == p.stop {
+			return
+		}
+	}
 	p.tip = block.GetParent()
 }
 
 func (p *Parser) addChild(node ast.Node) ast.Node {
 	for !canNodeContain(p.tip, node) {
+		if p.stop != nil && p.tip == p.stop {
+			break // prevent escaping container root
+		}
 		p.Finalize(p.tip)
 	}
 	ast.AppendChild(p.tip, node)
@@ -254,6 +270,7 @@ func canNodeContain(n ast.Node, v ast.Node) bool {
 	if o, ok := n.(ast.CanContain); ok {
 		return o.CanContain(v)
 	}
+
 	// for container nodes outside of ast package default to true
 	// because false is a bad default
 	typ := fmt.Sprintf("%T", n)
@@ -389,6 +406,28 @@ func (p *Parser) parseRefsToAST() {
 		}
 		return ast.GoToNext
 	})
+}
+
+func dump(node ast.Node, depth int) {
+	fmt.Printf("%s%T\n", strings.Repeat("  ", depth), node)
+
+	for _, c := range node.GetChildren() {
+		dump(c, depth+1)
+	}
+}
+
+func (p *Parser) ParseInner(container ast.Node, data []byte) {
+
+	oldTip := p.tip
+
+	p.stop = container
+	p.tip = container
+
+	p.Block(data)
+
+	p.stop = nil
+	p.tip = oldTip
+
 }
 
 //

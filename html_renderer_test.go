@@ -4,9 +4,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/gomarkdown/markdown/ast"
-	"github.com/gomarkdown/markdown/html"
-	"github.com/gomarkdown/markdown/parser"
+	"github.com/senforsce/markdown/ast"
+	"github.com/senforsce/markdown/html"
+	"github.com/senforsce/markdown/parser"
 )
 
 func renderHookEmpty(w io.Writer, node ast.Node, entering bool) (ast.WalkStatus, bool) {
@@ -72,7 +72,7 @@ func TestTagParagraphCode(t *testing.T) {
 
 // TestCodeBlockClassCoalescing verifies that when a code block has both
 // a language annotation and a custom class attribute, they are merged into
-// a single class attribute. See https://github.com/gomarkdown/markdown/issues/209.
+// a single class attribute. See https://github.com/senforsce/markdown/issues/209.
 func TestCodeBlockClassCoalescing(t *testing.T) {
 	input := "``` yml\ntext: something\n```\n"
 

@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gomarkdown/markdown/ast"
-	"github.com/gomarkdown/markdown/parser"
+	"github.com/senforsce/markdown/ast"
+	"github.com/senforsce/markdown/parser"
 )
 
 // Flags control optional behavior of HTML renderer.
@@ -205,7 +205,7 @@ func NewRenderer(opts RendererOptions) *Renderer {
 		opts.CitationFormatString = `<sup>[%s]</sup>`
 	}
 	if opts.Generator == "" {
-		opts.Generator = `  <meta name="GENERATOR" content="github.com/gomarkdown/markdown markdown processor for Go`
+		opts.Generator = `  <meta name="GENERATOR" content="github.com/senforsce/markdown markdown processor for Go`
 	}
 
 	return &Renderer{
@@ -708,8 +708,7 @@ func (r *Renderer) HorizontalRule(w io.Writer, node *ast.HorizontalRule) {
 }
 
 func (r *Renderer) listEnter(w io.Writer, nodeData *ast.List) {
-	// TODO: attrs don't seem to be set
-	var attrs []string
+	var attrs = make([]string, 0)
 
 	if nodeData.IsFootnotesList {
 		r.Outs(w, "\n<div class=\"footnotes\">\n\n")
@@ -947,6 +946,14 @@ func (r *Renderer) TableBody(w io.Writer, node *ast.TableBody, entering bool) {
 	}
 }
 
+func (r *Renderer) Box(w io.Writer, node *ast.Box, entering bool) {
+	if entering {
+		r.Outs(w, `<div class="qd-box">`)
+	} else {
+		r.Outs(w, `</div>`)
+	}
+}
+
 // DocumentMatter writes ast.DocumentMatter
 func (r *Renderer) DocumentMatter(w io.Writer, node *ast.DocumentMatter, entering bool) {
 	if !entering {
@@ -1066,6 +1073,8 @@ func (r *Renderer) RenderNode(w io.Writer, node ast.Node, entering bool) ast.Wal
 		r.List(w, node, entering)
 	case *ast.ListItem:
 		r.ListItem(w, node, entering)
+	case *ast.Box:
+		r.Box(w, node, entering)
 	case *ast.Table:
 		tag := TagWithAttributes("<table", BlockAttrs(node))
 		r.OutOneOfCr(w, entering, tag, "</table>")

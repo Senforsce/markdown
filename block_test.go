@@ -2,10 +2,11 @@ package markdown
 
 import (
 	"bytes"
-	"github.com/gomarkdown/markdown/ast"
-	"github.com/gomarkdown/markdown/html"
-	"github.com/gomarkdown/markdown/parser"
 	"testing"
+
+	"github.com/senforsce/markdown/ast"
+	"github.com/senforsce/markdown/html"
+	"github.com/senforsce/markdown/parser"
 )
 
 func TestPrefixHeaderNoExtensions(t *testing.T) {

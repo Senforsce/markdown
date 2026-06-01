@@ -208,8 +208,33 @@ type List struct {
 	IsFootnotesList bool   // This is a list of footnotes
 }
 
+// List represents markdown list node
+type ListBox struct {
+	Container
+
+	ListFlags       ListType
+	Tight           bool   // Skip <div>s around list item data if true
+	BulletChar      byte   // '*', '+' or '-' in bullet lists
+	Delimiter       byte   // '.' or ')' after the number in ordered lists
+	Start           int    // for ordered lists this indicates the starting number if > 0
+	RefLink         []byte // If not nil, turns this list item into a footnote item and triggers different rendering
+	IsFootnotesList bool   // This is a list of footnotes
+}
+
 // ListItem represents markdown list item node
 type ListItem struct {
+	Container
+
+	ListFlags       ListType
+	Tight           bool   // Skip <p>s around list item data if true
+	BulletChar      byte   // '*', '+' or '-' in bullet lists
+	Delimiter       byte   // '.' or ')' after the number in ordered lists
+	RefLink         []byte // If not nil, turns this list item into a footnote item and triggers different rendering
+	IsFootnotesList bool   // This is a list of footnotes
+}
+
+// ListItem represents markdown list box item node
+type ListBoxItem struct {
 	Container
 
 	ListFlags       ListType
@@ -314,6 +339,21 @@ type HTMLBlock struct {
 
 // CodeBlock represents markdown code block node
 type CodeBlock struct {
+	Leaf
+
+	IsFenced    bool   // Specifies whether it's a fenced code block or an indented one
+	Info        []byte // This holds the info string
+	FenceChar   byte
+	FenceLength int
+	FenceOffset int
+}
+
+type Box struct {
+	Container
+}
+
+// BoxBlock represents markdown code block node
+type BoxBlock struct {
 	Leaf
 
 	IsFenced    bool   // Specifies whether it's a fenced code block or an indented one

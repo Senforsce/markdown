@@ -2,13 +2,13 @@ package markdown
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
 
-	"github.com/gomarkdown/markdown/html"
-	"github.com/gomarkdown/markdown/parser"
+	"github.com/senforsce/markdown/html"
+	"github.com/senforsce/markdown/parser"
 )
 
 type TestParams struct {
@@ -134,7 +134,7 @@ func doTestsReference(t *testing.T, files []string, flag parser.Extensions) {
 	for _, basename := range files {
 		t.Run(basename, func(t *testing.T) {
 			filename := filepath.Join("testdata", basename+".text")
-			inputBytes, err := ioutil.ReadFile(filename)
+			inputBytes, err := os.ReadFile(filename)
 			if err != nil {
 				t.Errorf("Couldn't open '%s', error: %v\n", filename, err)
 				return
@@ -143,7 +143,7 @@ func doTestsReference(t *testing.T, files []string, flag parser.Extensions) {
 			input := string(inputBytes)
 
 			filename = filepath.Join("testdata", basename+".html")
-			expectedBytes, err := ioutil.ReadFile(filename)
+			expectedBytes, err := os.ReadFile(filename)
 			if err != nil {
 				t.Errorf("Couldn't open '%s', error: %v\n", filename, err)
 				return

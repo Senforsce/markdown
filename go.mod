@@ -1,3 +1,3 @@
-module github.com/gomarkdown/markdown
+module github.com/senforsce/markdown
 
-go 1.12
+go 1.26

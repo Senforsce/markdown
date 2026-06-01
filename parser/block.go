@@ -2,18 +2,19 @@ package parser
 
 import (
 	"bytes"
+	"fmt"
 	"html"
 	"regexp"
 	"strconv"
 	"unicode"
 
-	"github.com/gomarkdown/markdown/ast"
+	"github.com/senforsce/markdown/ast"
 )
 
 // Parsing block-level elements.
 
 const (
-	charEntity = "&(?:#x[a-f0-9]{1,8}|#[0-9]{1,8}|[a-z][a-z0-9]{1,31});"
+	charEntity = "&(?:#x[a-f0-9]{1,8}|#[0-9]{1,8}|[a-z][a-z0-9]{1,31}|:[3][a-z0-9]{2,31});"
 	escapable  = "[!\"#$%&'()*+,./:;<=>?@[\\\\\\]^_`{|}~-]"
 )
 
@@ -254,6 +255,25 @@ func (p *Parser) Block(data []byte) {
 			}
 		}
 
+		// fenced box block:
+		//
+		// :::box
+		// # title
+		// - some list item
+		// - some other element
+		// :::
+		if i := p.parseBoxBlock(data); i > 0 {
+
+			box := &ast.Box{}
+
+			p.AddBlock(box)
+			p.ParseInner(box, extractBoxInner(data[:i]))
+
+			data = data[i:]
+
+			continue
+		}
+
 		// horizontal rule:
 		//
 		// ------
@@ -395,6 +415,7 @@ func (p *Parser) AddBlock(n ast.Node) ast.Node {
 		}
 		p.attr = nil
 	}
+	fmt.Printf("ADD: %T under %T\n", n, p.tip)
 	return p.addChild(n)
 }
 
@@ -825,6 +846,47 @@ func isHRule(data []byte) bool {
 	return n >= 3
 }
 
+func syntaxRange(data []byte, iout *int) (int, int) {
+	n := len(data)
+	syn := 0
+	i := *iout
+	syntaxStart := i
+	if data[i] == '{' {
+		i++
+		syntaxStart++
+
+		for i < n && data[i] != '}' && data[i] != '\n' {
+			syn++
+			i++
+		}
+
+		if i >= n || data[i] != '}' {
+			return 0, 0
+		}
+
+		// strip all whitespace at the beginning and the end
+		// of the {} block
+		for syn > 0 && IsSpace(data[syntaxStart]) {
+			syntaxStart++
+			syn--
+		}
+
+		for syn > 0 && IsSpace(data[syntaxStart+syn-1]) {
+			syn--
+		}
+
+		i++
+	} else {
+		for i < n && data[i] != '\n' {
+			syn++
+			i++
+		}
+	}
+
+	*iout = i
+	return syntaxStart, syn
+}
+
 // isFenceLine checks if there's a fence line (e.g., ``` or ``` go) at the beginning of data,
 // and returns the end index if so, or 0 otherwise. It also returns the marker found.
 // If syntax is not nil, it gets set to the syntax specified in the fence line.
@@ -893,47 +955,6 @@ func isFenceLine(data []byte, syntax *string, oldmarker string) (end int, marker
 		return 0, ""
 	}
 	return i + 1, marker // Take newline into account.
-}
-
-func syntaxRange(data []byte, iout *int) (int, int) {
-	n := len(data)
-	syn := 0
-	i := *iout
-	syntaxStart := i
-	if data[i] == '{' {
-		i++
-		syntaxStart++
-
-		for i < n && data[i] != '}' && data[i] != '\n' {
-			syn++
-			i++
-		}
-
-		if i >= n || data[i] != '}' {
-			return 0, 0
-		}
-
-		// strip all whitespace at the beginning and the end
-		// of the {} block
-		for syn > 0 && IsSpace(data[syntaxStart]) {
-			syntaxStart++
-			syn--
-		}
-
-		for syn > 0 && IsSpace(data[syntaxStart+syn-1]) {
-			syn--
-		}
-
-		i++
-	} else {
-		for i < n && data[i] != '\n' {
-			syn++
-			i++
-		}
-	}
-
-	*iout = i
-	return syntaxStart, syn
 }
 
 // fencedCodeBlock returns the end index if data contains a fenced code block at the beginning,
@@ -1007,6 +1028,164 @@ func (p *Parser) fencedCodeBlock(data []byte, doRender bool) int {
 	// Still here, normal block
 	p.AddBlock(codeBlock)
 	finalizeCodeBlock(codeBlock)
+
+	return beg
+}
+
+func isBoxStart(data []byte) (int, bool) {
+	if len(data) < 6 {
+		return 0, false
+	}
+
+	// optional leading spaces (like fences)
+	i := 0
+	for i < len(data) && i < 3 && data[i] == ' ' {
+		i++
+	}
+
+	if len(data[i:]) >= 6 && string(data[i:i+6]) == ":::box" {
+		// must end line
+		end := i + 6
+		if end == len(data) || data[end] == '\n' {
+			if end < len(data) && data[end] == '\n' {
+				end++
+			}
+			return end, true
+		}
+	}
+
+	return 0, false
+}
+
+func isBoxEnd(data []byte) (int, bool) {
+	i := 0
+	for i < len(data) && i < 3 && data[i] == ' ' {
+		i++
+	}
+
+	if len(data[i:]) >= 3 && string(data[i:i+3]) == ":::" {
+		end := i + 3
+		if end == len(data) || data[end] == '\n' {
+			if end < len(data) && data[end] == '\n' {
+				end++
+			}
+			return end, true
+		}
+	}
+
+	return 0, false
+}
+
+func (p *Parser) isBoxBlock(data []byte) (start int, end int, ok bool) {
+	beg, ok := isBoxStart(data)
+	if !ok {
+		return 0, 0, false
+	}
+
+	i := beg
+
+	for {
+		if i >= len(data) {
+			return 0, 0, false
+		}
+
+		if end, ok := isBoxEnd(data[i:]); ok {
+			i += end
+			return beg, i, true
+		}
+
+		lineEnd := skipUntilChar(data, i, '\n')
+		if lineEnd < len(data) {
+			lineEnd++
+		}
+
+		i = lineEnd
+	}
+}
+
+func (p *Parser) parseBoxBlock(data []byte) int {
+	start, end, ok := p.isBoxBlock(data)
+	if !ok {
+		return 0
+	}
+
+	// extract inner content ONLY
+	content := data[start:end]
+
+	// remove :::box + ::: lines
+	inner := extractBoxInner(content)
+
+	box := &ast.Box{}
+
+	// 1. attach FIRST as container context
+	ast.AppendChild(p.tip, box)
+
+	// 2. switch context BEFORE parsing
+	oldTip := p.tip
+	p.tip = box
+
+	// 3. parse inner content inside box scope
+	p.Block(inner)
+
+	// 4. restore context
+	p.tip = oldTip
+
+	return end
+}
+
+func extractBoxInner(data []byte) []byte {
+	start := bytes.Index(data, []byte(":::box"))
+	if start < 0 {
+		return nil
+	}
+
+	start += len(":::box")
+
+	end := bytes.LastIndex(data, []byte(":::"))
+	if end < 0 || end <= start {
+		return nil
+	}
+
+	inner := data[start:end]
+	return bytes.Trim(inner, "\n")
+}
+
+func (p *Parser) boxBlock(data []byte, doRender bool) int {
+	fmt.Printf("BOX START\n")
+	fmt.Printf("%q\n", data[:min(100, len(data))])
+	beg, ok := isBoxStart(data)
+	if !ok {
+		return 0
+	}
+
+	// start := beg
+	var inner bytes.Buffer
+
+	for {
+		if beg >= len(data) {
+			return 0
+		}
+
+		if end, ok := isBoxEnd(data[beg:]); ok {
+			beg += end
+			break
+		}
+
+		lineEnd := skipUntilChar(data, beg, '\n')
+		if lineEnd < len(data) {
+			lineEnd++
+		}
+
+		inner.Write(data[beg:lineEnd])
+		beg = lineEnd
+	}
+
+	if !doRender {
+		return beg
+	}
+
+	fmt.Printf("BOX END consumed=%d\n", beg)
+	fmt.Printf("remaining=%q\n", data[beg:])
 
 	return beg
 }
@@ -1485,7 +1664,7 @@ gatherlines:
 		// loop if text before defintion term is fenced code block start
 		// marker but not part of actual fenced code block
 		// for defnition lists we're called after parsing fence code blocks
-		// so we kno this cannot be a fenced block
+		// so we know this cannot be a fenced block
 		// https://github.com/gomarkdown/markdown/issues/326
 		if !isDefinitionList && p.extensions&FencedCode != 0 {
 			fenceLineEnd, _ := isFenceLine(chunk, nil, "")
@@ -1702,6 +1881,13 @@ func (p *Parser) paragraph(data []byte) int {
 
 			p.renderParagraph(data[:i])
 			return i + n
+		}
+
+		fmt.Println("current", string(current))
+		if start, end, ok := p.isBoxBlock(current); ok {
+			fmt.Println("BOX is inside paragraph", start, end, ok)
+			p.renderParagraph(data[:i])
+			return i
 		}
 
 		// an underline under some text marks a heading, so our paragraph ended on prev line

@@ -2,11 +2,11 @@ package markdown
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/gomarkdown/markdown/parser"
+	"github.com/senforsce/markdown/parser"
 )
 
 type testData struct {
@@ -30,9 +30,9 @@ func readTestFile2(t *testing.T, fileName string) []string {
 
 func readTestFile(t *testing.T, fileName string) []*testData {
 	path := filepath.Join("testdata", fileName)
-	d, err := ioutil.ReadFile(path)
+	d, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("ioutil.ReadFile('%s') failed with %s", path, err)
+		t.Fatalf("os.ReadFile('%s') failed with %s", path, err)
 	}
 	parts := bytes.Split(d, []byte("+++\n"))
 	if len(parts)%2 != 0 {
